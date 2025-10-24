@@ -512,11 +512,6 @@ if __name__ == "__main__":
     CSV_PATH = "./data/etfindex.csv"
     IMAGE_PATH = "./output/heatmap.png"  # 仅在需要保存本地图片时使用
 
-    # SENDER = "278047888@qq.com"
-    # PASSWORD = "smxiqxfjvdolcbef"   # 建议用应用专用密码
-    # RECEIVERS = ["278047888@qq.com"]
-    # SMTP_SERVER = "smtp.qq.com"
-    # SMTP_PORT = 465
 
     # ===== 执行任务 =====
     # 1. 更新数据
