@@ -488,7 +488,7 @@ def generate_html_table(csv_path="./data/etf.csv", show_days=30):
     <body>
         <h2 style="text-align:center; color:#333;">ETF涨跌幅热力图</h2>
         <p style="text-align:center; color:#666; font-size: 12px;">
-            注：连续3个或以上交易日下跌的格子标有红色边框；相同分类的行在类别列进行单元格合并
+            注：连续3个或以上交易日下跌的格子标有红色边框
         </p>
         {html_table}
     </body>
