@@ -8,6 +8,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
+import time
 from tushare_token_manager.token_manager import get_valid_token
 from dotenv import load_dotenv
 
@@ -87,9 +88,14 @@ flat_etf, code_to_group = flatten_etf_dict(etf_dict)
 flat_codes = list(flat_etf.values())
 
 
-def update_etf_data(csv_path="./data/etf.csv", token=None):
+def update_etf_data(csv_path="./data/etf.csv", token=None, timeout=300, per_code_retries=3, retry_delay=5):
     """
     使用 tushare 接口更新ETF日行情数据，并保存到本地
+
+    新增参数（超时/重试）：
+        timeout: 整个更新过程的最长允许秒数（默认300秒）
+        per_code_retries: 每个 ts_code 的最大重试次数（默认3）
+        retry_delay: 每次重试之间的等待秒数（默认5秒）
     """
     if token is None:
         raise ValueError("请传入 tushare token")
@@ -102,12 +108,51 @@ def update_etf_data(csv_path="./data/etf.csv", token=None):
         df_local = pd.DataFrame()
 
     all_data = []
+    start_time = time.time()
+
     # 使用扁平化后的代码列表
     for ts_code in flat_codes:
-        print(f"正在更新 {ts_code} 数据...")
-        # 使用 fund_daily 接口获取ETF数据
-        df_new = pro.fund_daily(ts_code=ts_code)
-        all_data.append(df_new)
+        # 检查总超时
+        elapsed_total = time.time() - start_time
+        if elapsed_total > timeout:
+            raise TimeoutError(f"更新超时（超过 {timeout} 秒），在处理 {ts_code} 时终止。")
+
+        print(f"正在更新 {ts_code} 数据... (剩余超时约 {int(timeout - elapsed_total)}s)")
+        attempt = 0
+        last_exception = None
+        df_new = None
+
+        while attempt < per_code_retries:
+            try:
+                df_new = pro.fund_daily(ts_code=ts_code)
+                # 如果返回为空 DataFrame，视为一次失败并重试
+                if df_new is None or df_new.empty:
+                    raise ValueError("返回数据为空")
+                # 成功则跳出重试循环
+                break
+            except Exception as e:
+                last_exception = e
+                attempt += 1
+                elapsed_total = time.time() - start_time
+                # 如果总超时则立即退出
+                if elapsed_total > timeout:
+                    raise TimeoutError(f"更新超时（超过 {timeout} 秒），在处理 {ts_code} 时终止。") from e
+                if attempt < per_code_retries:
+                    print(f"⚠️ {ts_code} 获取失败（第 {attempt}/{per_code_retries} 次），{e}，{retry_delay}s 后重试...")
+                    time.sleep(retry_delay)
+                else:
+                    print(f"❌ {ts_code} 达到最大重试次数（{per_code_retries}），跳过。最后错误：{e}")
+
+        # 如果最终 df_new 有效则加入集合
+        if df_new is not None and not (df_new is None or (hasattr(df_new, 'empty') and df_new.empty)):
+            all_data.append(df_new)
+        else:
+            # 记录失败但继续处理下一个 code
+            print(f"⚠️ 跳过 {ts_code}，未获取到有效数据。最后错误：{last_exception}")
+
+    if not all_data:
+        print("未获取到任何新数据，返回本地数据（如果存在）。")
+        return df_local
 
     df_new_all = pd.concat(all_data, ignore_index=True)
 
