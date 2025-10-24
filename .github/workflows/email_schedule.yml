@@ -39,11 +39,16 @@ jobs:
         python ETF_email.py
 
     # ✅ 保存 config.json 改动
-    - name: Commit and push config changes
+    # 6️⃣ 提交脚本执行后的文件更新
+    - name: Commit and push config and data updates
       if: success()
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add config.json
-        git commit -m "Auto update config.json" || echo "No changes to commit"
-        git push
+
+        # 检查是否有变化（config.json 或 data/etfindex.csv）
+        git add config.json data/etfindex.csv || true
+        git diff --cached --quiet && echo "No file changes detected" || (
+          git commit -m "Auto update config.json and data/etfindex.csv [$(date '+%Y-%m-%d %H:%M:%S')]"
+          git push
+        )
