@@ -253,13 +253,13 @@ def plot_heatmap(csv_path="./data/etf.csv", show_days=30, save_path="./output/et
     return save_path
 
 
-def detect_consecutive_negatives(series, min_consecutive=4):
+def detect_consecutive_negatives(series, min_consecutive=3):
     """
     检测某一列（某个ETF）中连续负值的位置
     
     参数:
         series: pandas Series，某个ETF的收益率序列（按时间降序）
-        min_consecutive: 最小连续负值天数，默认4
+        min_consecutive: 最小连续负值天数，默认3
     
     返回:
         set: 满足连续下跌条件的行索引集合
@@ -336,13 +336,27 @@ def generate_html_table(csv_path="./data/etf.csv", show_days=30):
     pivot_df = pivot_df.loc[~pivot_df.index.duplicated(keep='first')]
     pivot_df = pivot_df.loc[:, ~pivot_df.columns.duplicated(keep='first')]
 
-    # 为每行 ETF 构建分类信息（基于 code 提取）
+    # 为每行 ETF 构建分类信息（基于 code 提取），并为每个分类分配浅色背景
     category_for_row = {}
+    categories = []
     for etf_label in pivot_df.index:
         # etf_label 格式为 "名称: 代码"
         parts = etf_label.rsplit(": ", 1)  # 从右边分割，避免名称中含冒号
         code = parts[1] if len(parts) == 2 else parts[0]
-        category_for_row[etf_label] = code_to_group.get(code, "")
+        cat = code_to_group.get(code, "") or "其他"
+        category_for_row[etf_label] = cat
+        if cat not in categories:
+            categories.append(cat)
+
+    # 预定义浅色（pastel）配色，按分类循环分配
+    pastel_colors = {
+        "国内指数": "#E8F5E9",    # 浅绿
+        "国际指数": "#E3F2FD",    # 浅蓝
+        "行业题材": "#FFF3E0",    # 浅橙
+        "大宗商品": "#F3E5F5",    # 浅紫
+        "其他": "#FFFDE7"         # 浅黄
+    }
+    category_colors = {cat: pastel_colors.get(cat, "#FFFFFF") for cat in categories}
 
     # ===== 检测每行（每个ETF）中的连续负值 =====
     negative_markers = {}  # {etf_name: set(日期索引)}
@@ -437,8 +451,9 @@ def generate_html_table(csv_path="./data/etf.csv", show_days=30):
             # 找到该类别对应的合并段信息
             for start, rowspan in category_spans.get(cur_category, []):
                 if row_idx == start:
-                    # 这是这个合并段的起始行
-                    category_cell_html = f"<td style='text-align: center; padding: 6px 12px; border: 1px solid #f0f0f0; min-width: 100px; font-weight:600; vertical-align: middle;' rowspan='{rowspan}'>{cur_category}</td>"
+                    # 使用分类对应的浅色背景
+                    bg = category_colors.get(cur_category, "#FFFFFF")
+                    category_cell_html = f"<td style='text-align: center; padding: 6px 12px; border: 1px solid #d0d0d0; min-width: 100px; font-weight:600; vertical-align: middle; background-color: {bg};' rowspan='{rowspan}'>{cur_category}</td>"
                     # 标记这个段内的所有行为已处理
                     for j in range(start, start + rowspan):
                         category_cell_printed[j] = True
@@ -561,7 +576,7 @@ if __name__ == "__main__":
 
     # ===== 执行任务 =====
     # 1. 更新数据
-    update_etf_data(CSV_PATH, TUSHARE_TOKEN)
+    # update_etf_data(CSV_PATH, TUSHARE_TOKEN)
     
     # 2. 生成HTML表格
     html_report = generate_html_table(CSV_PATH, show_days=7)
@@ -571,5 +586,5 @@ if __name__ == "__main__":
     
     # 4. 发送邮件
     today = datetime.now().strftime("%Y-%m-%d")
-    subject = f"ETF涨跌幅日报 - {today}"
+    subject = f"ETF日报 - {today}"
     send_email(html_report, subject, RECEIVERS, SENDER, PASSWORD, SMTP_SERVER, SMTP_PORT)
