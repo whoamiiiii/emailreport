@@ -2,7 +2,7 @@ name: Send Daily ETF Email
 
 on:
   schedule:
-    - cron: "6 9 * * *"  # 每天北京时间执行
+    - cron: "2 9 * * *"  # 每天北京时间执行
   workflow_dispatch:
 
 jobs:
