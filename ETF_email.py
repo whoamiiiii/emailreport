@@ -568,7 +568,8 @@ if __name__ == "__main__":
     SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 
     from tushare_token_manager.token_manager import get_valid_token
-    TUSHARE_TOKEN = get_valid_token()
+    # TUSHARE_TOKEN = get_valid_token() 暂时失效
+    TUSHARE_TOKEN = '43119fa00d8ed6ea01edae1cb6465d654df4373f4568338751681562'
 
     CSV_PATH = "./data/etfindex.csv"
     IMAGE_PATH = "./output/heatmap.png"  # 仅在需要保存本地图片时使用
