@@ -569,7 +569,7 @@ if __name__ == "__main__":
 
     from tushare_token_manager.token_manager import get_valid_token
     # TUSHARE_TOKEN = get_valid_token() 暂时失效
-    TUSHARE_TOKEN = '7f0f9072e0f93d39adcf4e1776a04351c69cb7fe7fb8800923fe20bd'
+    TUSHARE_TOKEN = '506034b00d937ff2ac78c5015592f42e049ed84c44669ab04eed466e'
 
     CSV_PATH = "./data/etfindex.csv"
     IMAGE_PATH = "./output/heatmap.png"  # 仅在需要保存本地图片时使用
