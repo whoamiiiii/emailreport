@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 import time
-from tushare_token_manager.token_manager import get_valid_token
 from dotenv import load_dotenv
+# from tushare_token_manager.token_manager import get_valid_token
 
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
