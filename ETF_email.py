@@ -596,7 +596,8 @@ if __name__ == "__main__":
 
     # ===== 执行任务 =====
     # 1. 更新数据
-    update_etf_data(CSV_PATH, TUSHARE_TOKEN)
+    update_etf_data(csv_path=CSV_PATH, token=TUSHARE_TOKEN, timeout=300, per_code_retries=3, retry_delay=5)
+    #update_etf_data(CSV_PATH, TUSHARE_TOKEN)
     
     # 2. 生成HTML表格
     html_report = generate_html_table(CSV_PATH, show_days=7)
