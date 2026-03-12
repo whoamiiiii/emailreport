@@ -586,7 +586,7 @@ if __name__ == "__main__":
 
     # from tushare_token_manager.token_manager import get_valid_token
     # TUSHARE_TOKEN = get_valid_token() 暂时失效
-    TUSHARE_TOKEN = '13b3258a9afebe7d2e75cc4bd460e808282a6368101eb52656ee7345'
+    TUSHARE_TOKEN = '6d670ff9e2a290fad53f25708b26fc64f06378b9751f3fa8e229ea82'
     # TUSHARE_TOKEN = os.getenv("TS_TOKEN")
     # print("TUSHARE_TOKEN value:", TUSHARE_TOKEN)
 
