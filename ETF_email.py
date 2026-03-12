@@ -12,11 +12,11 @@ import time
 from dotenv import load_dotenv
 # from tushare_token_manager.token_manager import get_valid_token
 
-# 设置中文字体
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
-plt.rcParams['axes.unicode_minus'] = False
+# ========================================
+# 配置部分 - 所有需要修改的参数都在这里
+# ========================================
 
-# ===== ETF映射字典 =====
+# ===== ETF映射字典配置 =====
 etf_dict = {
     "国内指数": {
         "上证50": "510050.SH",
@@ -80,8 +80,44 @@ etf_dict = {
     }
 }
 
+# ===== 数据源配置 =====
+# Tushare Token (可从环境变量获取或直接配置)
+load_dotenv()
+TUSHARE_TOKEN = os.getenv("TS_TOKEN", '6d670ff9e2a290fad53f25708b26fc64f06378b9751f3fa8e229ea82')
 
-# ===== 添加扁平化工具函数 =====
+# ===== 文件路径配置 =====
+CSV_PATH = "./data/etfindex.csv"          # ETF数据保存路径
+IMAGE_PATH = "./output/heatmap.png"       # 热力图保存路径（可选）
+
+# ===== 邮件配置 =====
+SENDER = os.getenv("EMAIL_SENDER")                          # 发件人邮箱
+PASSWORD = os.getenv("EMAIL_PASS")                          # 邮箱密码/应用专用密码
+RECEIVERS = os.getenv("EMAIL_RECEIVERS", "").split(",")     # 收件人列表（逗号分隔）
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.qq.com")       # SMTP服务器
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))              # SMTP端口
+
+# ===== 更新参数配置 =====
+UPDATE_TIMEOUT = 300          # 更新数据的超时时间（秒）
+PER_CODE_RETRIES = 3          # 每个代码的重试次数
+RETRY_DELAY = 5               # 重试间隔（秒）
+
+# ===== 显示参数配置 =====
+SHOW_DAYS = 7                 # 显示的交易日数量
+MIN_CONSECUTIVE_NEGATIVES = 3 # 标记连续下跌的最小天数
+
+# ========================================
+# 初始化设置
+# ========================================
+
+# 设置中文字体
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS']
+plt.rcParams['axes.unicode_minus'] = False
+
+
+# ========================================
+# 工具函数和核心功能
+# ========================================
+
 def flatten_etf_dict(d):
     """
     将嵌套的 etf_dict（group -> {name: code}）扁平化为 {name: code}。
@@ -106,17 +142,26 @@ flat_etf, code_to_group = flatten_etf_dict(etf_dict)
 flat_codes = list(flat_etf.values())
 
 
-def update_etf_data(csv_path="./data/etf.csv", token=None, timeout=300, per_code_retries=3, retry_delay=5):
+def update_etf_data(csv_path=None, token=None, timeout=None, per_code_retries=None, retry_delay=None):
     """
     使用 tushare 接口更新ETF日行情数据，并保存到本地
 
-    新增参数（超时/重试）：
-        timeout: 整个更新过程的最长允许秒数（默认300秒）
-        per_code_retries: 每个 ts_code 的最大重试次数（默认3）
-        retry_delay: 每次重试之间的等待秒数（默认5秒）
+    参数（超时/重试）：
+        csv_path: CSV文件路径（默认使用配置中的 CSV_PATH）
+        token: Tushare token（默认使用配置中的 TUSHARE_TOKEN）
+        timeout: 整个更新过程的最长允许秒数（默认使用配置中的 UPDATE_TIMEOUT）
+        per_code_retries: 每个 ts_code 的最大重试次数（默认使用配置中的 PER_CODE_RETRIES）
+        retry_delay: 每次重试之间的等待秒数（默认使用配置中的 RETRY_DELAY）
     """
+    # 使用配置中的默认值
+    csv_path = csv_path or CSV_PATH
+    token = token or TUSHARE_TOKEN
+    timeout = timeout if timeout is not None else UPDATE_TIMEOUT
+    per_code_retries = per_code_retries if per_code_retries is not None else PER_CODE_RETRIES
+    retry_delay = retry_delay if retry_delay is not None else RETRY_DELAY
+    
     if token is None:
-        raise ValueError("请传入 tushare token")
+        raise ValueError("请传入 tushare token 或在配置中设置 TUSHARE_TOKEN")
 
     pro = ts.pro_api(token)
 
@@ -186,16 +231,21 @@ def update_etf_data(csv_path="./data/etf.csv", token=None, timeout=300, per_code
     return df
 
 
-def plot_heatmap(csv_path="./data/etf.csv", show_days=30, save_path="./output/etf_heatmap.png", save_local=True):
+def plot_heatmap(csv_path=None, show_days=None, save_path=None, save_local=True):
     """
     使用 matplotlib 绘制ETF涨跌幅热力图
     
     参数:
-        csv_path: CSV文件路径
-        show_days: 展示的交易日数量
-        save_path: 图片保存路径
+        csv_path: CSV文件路径（默认使用配置中的 CSV_PATH）
+        show_days: 展示的交易日数量（默认使用配置中的 SHOW_DAYS）
+        save_path: 图片保存路径（默认使用配置中的 IMAGE_PATH）
         save_local: 是否保存到本地，默认True
     """
+    # 使用配置中的默认值
+    csv_path = csv_path or CSV_PATH
+    show_days = show_days if show_days is not None else SHOW_DAYS
+    save_path = save_path or IMAGE_PATH
+    
     # 读取数据
     df = pd.read_csv(csv_path, dtype={"ts_code": str, "trade_date": str})
     df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
@@ -270,17 +320,18 @@ def plot_heatmap(csv_path="./data/etf.csv", show_days=30, save_path="./output/et
     return save_path
 
 
-def detect_consecutive_negatives(series, min_consecutive=3):
+def detect_consecutive_negatives(series, min_consecutive=None):
     """
     检测某一列（某个ETF）中连续负值的位置
     
     参数:
         series: pandas Series，某个ETF的收益率序列（按时间降序）
-        min_consecutive: 最小连续负值天数，默认3
+        min_consecutive: 最小连续负值天数（默认使用配置中的 MIN_CONSECUTIVE_NEGATIVES）
     
     返回:
         set: 满足连续下跌条件的行索引集合
     """
+    min_consecutive = min_consecutive if min_consecutive is not None else MIN_CONSECUTIVE_NEGATIVES
     marked_indices = set()
     consecutive_count = 0
     consecutive_start = None
@@ -315,12 +366,20 @@ def detect_consecutive_negatives(series, min_consecutive=3):
     return marked_indices
 
 
-def generate_html_table(csv_path="./data/etf.csv", show_days=30):
+def generate_html_table(csv_path=None, show_days=None):
     """
     生成 HTML 格式的ETF涨跌幅热力图表格。
     在 ETF 列前增加一列显示该 ETF 所属的分类（字典的键）。
     相邻行分类相同时取消行中间的横线，相同分类的行在类别列进行单元格合并。
+    
+    参数:
+        csv_path: CSV文件路径（默认使用配置中的 CSV_PATH）
+        show_days: 展示的交易日数量（默认使用配置中的 SHOW_DAYS）
     """
+    # 使用配置中的默认值
+    csv_path = csv_path or CSV_PATH
+    show_days = show_days if show_days is not None else SHOW_DAYS
+    
     df = pd.read_csv(csv_path, dtype={"ts_code": str, "trade_date": str})
     df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
     # 支持扁平化 etf_dict
@@ -378,7 +437,7 @@ def generate_html_table(csv_path="./data/etf.csv", show_days=30):
     # ===== 检测每行（每个ETF）中的连续负值 =====
     negative_markers = {}  # {etf_name: set(日期索引)}
     for etf in pivot_df.index:
-        negative_markers[etf] = detect_consecutive_negatives(pivot_df.loc[etf], min_consecutive=3)
+        negative_markers[etf] = detect_consecutive_negatives(pivot_df.loc[etf])
 
     # ===== 自定义红绿配色（红涨绿跌） =====
     colors = ["#52c41a", "#ffffff", "#ff4d4f"]
@@ -530,10 +589,27 @@ def generate_html_table(csv_path="./data/etf.csv", show_days=30):
     return html_template
 
 
-def send_email(html_content, subject, receivers, sender, password, smtp_server, smtp_port=465, use_ssl=True):
+def send_email(html_content, subject, receivers=None, sender=None, password=None, 
+               smtp_server=None, smtp_port=None, use_ssl=True):
     """
     发送 HTML 邮件，支持 SSL/非SSL，带错误捕获
+    
+    参数:
+        html_content: 邮件内容（HTML格式）
+        subject: 邮件主题
+        receivers: 收件人列表（默认使用配置中的 RECEIVERS）
+        sender: 发件人邮箱（默认使用配置中的 SENDER）
+        password: 邮箱密码（默认使用配置中的 PASSWORD）
+        smtp_server: SMTP服务器（默认使用配置中的 SMTP_SERVER）
+        smtp_port: SMTP端口（默认使用配置中的 SMTP_PORT）
+        use_ssl: 是否使用SSL，默认True
     """
+    # 使用配置中的默认值
+    receivers = receivers or RECEIVERS
+    sender = sender or SENDER
+    password = password or PASSWORD
+    smtp_server = smtp_server or SMTP_SERVER
+    smtp_port = smtp_port if smtp_port is not None else SMTP_PORT
     try:
         # 构造邮件
         msg = MIMEMultipart("alternative")
@@ -575,37 +651,21 @@ def send_email(html_content, subject, receivers, sender, password, smtp_server, 
 
 
 if __name__ == "__main__":
-    # ===== 配置参数 =====
-
-    load_dotenv()
-    SENDER = os.getenv("EMAIL_SENDER")
-    PASSWORD = os.getenv("EMAIL_PASS")
-    RECEIVERS = os.getenv("EMAIL_RECEIVERS").split(",")
-    SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.qq.com")
-    SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
-
-    # from tushare_token_manager.token_manager import get_valid_token
-    # TUSHARE_TOKEN = get_valid_token() 暂时失效
-    TUSHARE_TOKEN = '6d670ff9e2a290fad53f25708b26fc64f06378b9751f3fa8e229ea82'
-    # TUSHARE_TOKEN = os.getenv("TS_TOKEN")
-    # print("TUSHARE_TOKEN value:", TUSHARE_TOKEN)
-
-    CSV_PATH = "./data/etfindex.csv"
-    IMAGE_PATH = "./output/heatmap.png"  # 仅在需要保存本地图片时使用
-
-
     # ===== 执行任务 =====
+    
     # 1. 更新数据
-    update_etf_data(csv_path=CSV_PATH, token=TUSHARE_TOKEN, timeout=300, per_code_retries=3, retry_delay=5)
-    #update_etf_data(CSV_PATH, TUSHARE_TOKEN)
+    print("开始更新ETF数据...")
+    update_etf_data()
     
     # 2. 生成HTML表格
-    html_report = generate_html_table(CSV_PATH, show_days=7)
+    print("生成HTML报告...")
+    html_report = generate_html_table()
     
     # 3. 可选：绘制并保存热力图到本地
-    # plot_heatmap(CSV_PATH, show_days=30, save_path=IMAGE_PATH, save_local=True)
+    # plot_heatmap(save_local=True)
     
     # 4. 发送邮件
+    print("发送邮件...")
     today = datetime.now().strftime("%Y-%m-%d")
     subject = f"ETF日报 - {today}"
-    send_email(html_report, subject, RECEIVERS, SENDER, PASSWORD, SMTP_SERVER, SMTP_PORT)
+    send_email(html_report, subject)
