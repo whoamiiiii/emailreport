@@ -39,44 +39,40 @@ etf_dict = {
     "行业题材": {
         "芯片": "588200.SH",
         "人工智能F": "515070.SH",
+        "人工智能": "515980.SH",
         "机器人": "562500.SH",
         "软件服务": "159852.SZ",
         "动漫游戏": "159869.SZ",
+        "影视": "159855.SZ",
+        "传媒": "512980.SH",
+        "5G通信": "515050.SH",
         "车电池": "159755.SZ",
+        "新能源": "516160.SH",
         "证券公司": "512000.SH",
         "银行": "512800.SH",
         "房地产": "512200.SH",
         "有色": "512400.SH",
         "化工": "159870.SZ",
-        "煤炭": "515220.SH",
+        "煤炭": "515200.SH",
+        "电力": "159611.SZ",
+        "机械": "159886.SZ",
         "稀土": "516150.SH",
         "消费": "159928.SZ",
         "白酒": "161725.SZ",
+        "食品饮料": "159736.SZ",
         "医疗": "512170.SH",
+        "医药": "512010.SH",
+        "医疗器械": "562600.SH",
+        "中药": "560080.SH",
         "畜牧业": "159865.SZ",
         "军工": "512660.SH",
-        "中药": "560080.SH",
         "旅游": "159766.SZ",
-        "食品饮料": "159736.SZ",
-        # 新添加
-        "煤炭": "515200.SH",
-        "新能源": "516850.SH",
-        "化工": "159870.SZ",
-        "机械": "159886.SZ",
-        "新能源": "516160.SH",
-        "家电": "159996.SZ",
-        "房地产": "512200.SH",
-        "传媒": "512980.SH",
-        "5G通信": "515050.SH",
-        "医药": "512010.SH",
-        "医疗器械": "562600.SH",  
-        "人工智能": "515980.SH",
-        "影视": "159855.SZ",
-        "电力": "159611.SZ"
+        "家电": "159996.SZ"
     },
     "大宗商品": {
         "黄金": "518880.SH",
-        "原油": "513690.SH"
+        "原油": "513690.SH",
+        "抗通胀LOF": "161815.SZ",
     }
 }
 
@@ -92,7 +88,9 @@ IMAGE_PATH = "./output/heatmap.png"       # 热力图保存路径（可选）
 # ===== 邮件配置 =====
 SENDER = os.getenv("EMAIL_SENDER")                          # 发件人邮箱
 PASSWORD = os.getenv("EMAIL_PASS")                          # 邮箱密码/应用专用密码
-RECEIVERS = os.getenv("EMAIL_RECEIVERS", "").split(",")     # 收件人列表（逗号分隔）
+# 处理RECEIVERS：过滤空字符串
+_receivers_str = os.getenv("EMAIL_RECEIVERS", "")
+RECEIVERS = [r.strip() for r in _receivers_str.split(",") if r.strip()]  # 收件人列表（逗号分隔）
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.qq.com")       # SMTP服务器
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))              # SMTP端口
 
@@ -139,7 +137,8 @@ def flatten_etf_dict(d):
 
 # 全局生成扁平映射和分组映射
 flat_etf, code_to_group = flatten_etf_dict(etf_dict)
-flat_codes = list(flat_etf.values())
+# 去重：避免重复更新相同的代码
+flat_codes = list(set(flat_etf.values()))
 
 
 def update_etf_data(csv_path=None, token=None, timeout=None, per_code_retries=None, retry_delay=None):
@@ -207,7 +206,7 @@ def update_etf_data(csv_path=None, token=None, timeout=None, per_code_retries=No
                     print(f"❌ {ts_code} 达到最大重试次数（{per_code_retries}），跳过。最后错误：{e}")
 
         # 如果最终 df_new 有效则加入集合
-        if df_new is not None and not (df_new is None or (hasattr(df_new, 'empty') and df_new.empty)):
+        if df_new is not None and not df_new.empty:
             all_data.append(df_new)
         else:
             # 记录失败但继续处理下一个 code
@@ -652,20 +651,27 @@ def send_email(html_content, subject, receivers=None, sender=None, password=None
 
 if __name__ == "__main__":
     # ===== 执行任务 =====
-    
-    # 1. 更新数据
-    print("开始更新ETF数据...")
-    update_etf_data()
-    
-    # 2. 生成HTML表格
-    print("生成HTML报告...")
-    html_report = generate_html_table()
-    
-    # 3. 可选：绘制并保存热力图到本地
-    # plot_heatmap(save_local=True)
-    
-    # 4. 发送邮件
-    print("发送邮件...")
-    today = datetime.now().strftime("%Y-%m-%d")
-    subject = f"ETF日报 - {today}"
-    send_email(html_report, subject)
+    try:
+        # 1. 更新数据
+        print("开始更新ETF数据...")
+        update_etf_data()
+        
+        # 2. 生成HTML表格
+        print("生成HTML报告...")
+        html_report = generate_html_table()
+        
+        # 3. 可选：绘制并保存热力图到本地
+        # plot_heatmap(save_local=True)
+        
+        # 4. 发送邮件
+        print("发送邮件...")
+        today = datetime.now().strftime("%Y-%m-%d")
+        subject = f"ETF日报 - {today}"
+        send_email(html_report, subject)
+        
+        print("\n✅ 所有任务执行完成！")
+        
+    except Exception as e:
+        print(f"\n❌ 程序执行失败：{e}")
+        import traceback
+        traceback.print_exc()
