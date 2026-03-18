@@ -79,7 +79,7 @@ etf_dict = {
 # ===== 数据源配置 =====
 # Tushare Token (可从环境变量获取或直接配置)
 load_dotenv()
-TUSHARE_TOKEN = os.getenv("TS_TOKEN", '6d670ff9e2a290fad53f25708b26fc64f06378b9751f3fa8e229ea82')
+TUSHARE_TOKEN = os.getenv("TS_TOKEN", 'f0db608806700c00767d6c53a66f771d896190a12a0df4b33c6a1163')
 
 # ===== 文件路径配置 =====
 CSV_PATH = "./data/etfindex.csv"          # ETF数据保存路径
